@@ -248,3 +248,22 @@ function initializeClock() {
     setInterval(updateClock, 1000);
     updateClock();
 }
+
+// ===================================================================================
+// 검색 함수
+// ===================================================================================
+const searchInput = document.getElementById('search-input');
+if (searchInput) {
+    searchInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+            const query = searchInput.value.trim();
+            if (query) {
+                performSearch(query);
+            }
+        }
+    });
+}
+function performSearch(query) {
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    window.location.href = searchUrl;
+}
