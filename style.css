@@ -108,6 +108,14 @@ body, html {
     font-weight: 400;
 }
 
-.time {
+#tip {
+    position: fixed;
+    bottom: 20px;
+    font-size: 16px;
+    margin-top: 20px;
+    color: #ddd;
+}
+
+.shadowed {
     text-shadow: 0 0 5px #0006;
 }
