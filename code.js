@@ -5,7 +5,7 @@ let config = {
     autohide: true,
     hideDelay: 3000,
     backgroundColor: 'rgba(0, 0, 0)',
-    blur: false,
+    blur: true,
 };
 
 // ===================================================================================
