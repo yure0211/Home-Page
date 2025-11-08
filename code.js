@@ -3,12 +3,10 @@
 // ===================================================================================
 let config = {
     autohide: true,
-    blur: true,
-    showsearch: true,
-    hideDelay: 2000,
+    hideDelay: 3000,
     backgroundColor: 'rgba(0, 0, 0)',
+    blur: false,
 };
-// backgroundImage는 이제 IndexedDB에서 관리하므로 여기서 제외합니다.
 
 // ===================================================================================
 // IndexedDB 관련 설정 및 함수
@@ -42,12 +40,12 @@ function initDB() {
 
 function saveImageToDB(images) {
     if (!db) return Promise.reject("DB is not initialized.");
+
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
         store.clear(); // 기존 이미지 모두 삭제
 
-        // 이미지를 하나씩 저장
         images.forEach((imageBlob, index) => {
             store.put({ id: `image_${index}`, data: imageBlob });
         });
@@ -59,6 +57,7 @@ function saveImageToDB(images) {
 
 function loadImagesFromDB() {
     if (!db) return Promise.reject("DB is not initialized.");
+
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readonly');
         const store = transaction.objectStore(STORE_NAME);
@@ -68,21 +67,24 @@ function loadImagesFromDB() {
             const imageRecords = request.result.map(record => record.data);
             resolve(imageRecords);
         };
+
         request.onerror = event => reject(event.target.error);
     });
 }
 
 function clearImagesFromDB() {
     if (!db) return Promise.reject("DB is not initialized.");
+
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        const request = store.clear(); // 저장소의 모든 데이터를 삭제
+        store.clear();
 
         transaction.oncomplete = () => {
             console.log("모든 배경 이미지가 삭제되었습니다.");
             resolve();
         };
+
         transaction.onerror = event => {
             console.error("이미지 삭제 중 오류 발생:", event.target.error);
             reject(event.target.error);
@@ -96,7 +98,6 @@ function clearImagesFromDB() {
 function loadSettings() {
     const savedConfig = localStorage.getItem('clockConfig');
     if (savedConfig) {
-        // 저장된 설정과 기본 설정을 합침 (새로운 설정 추가에 대응)
         config = { ...config, ...JSON.parse(savedConfig) };
     }
 }
@@ -110,21 +111,80 @@ function saveSettings() {
 // ===================================================================================
 document.addEventListener('DOMContentLoaded', async () => {
     loadSettings();
-    await initDB(); // DB 초기화가 완료될 때까지 기다림
-    await applyBackground(); // DB에서 이미지 로드 후 배경 적용
+    await initDB();
+    
+    applyAllSettings();
     
     initializeAutohide();
     initializeClock();
+    initializeEventListeners();
+});
 
+// ===================================================================================
+// 모든 설정 UI 적용 함수
+// ===================================================================================
+async function applyAllSettings() {
+    await applyBackground();
+    applyBlurEffect();
+
+    const blurToggle = document.getElementById('blurToggle');
+    if(blurToggle) {
+        blurToggle.checked = config.blur;
+    }
+}
+
+function initializeEventListeners() {
     const changeBgBtn = document.getElementById('changeBackgroundBtn');
     if (changeBgBtn) {
         changeBgBtn.addEventListener('click', openBackgroundDialog);
     }
-});
+    
+    const resetBgBtn = document.getElementById('resetBackgroundBtn');
+    if (resetBgBtn) {
+        resetBgBtn.addEventListener('click', resetBackground);
+    }
+
+    const blurToggle = document.getElementById('blurToggle');
+    if (blurToggle) {
+        blurToggle.addEventListener('change', () => {
+            config.blur = blurToggle.checked;
+            saveSettings();
+            applyBlurEffect();
+        });
+    }
+}
 
 // ===================================================================================
-// 자동 숨김 기능
+// 개별 설정 적용 함수들
 // ===================================================================================
+function applyBlurEffect() {
+    const itemBox = document.getElementById('item-box');
+    if (config.blur) {
+        itemBox.classList.add('blur-effect');
+    } else {
+        itemBox.classList.remove('blur-effect');
+    }
+}
+
+async function applyBackground() {
+    const backgroundElement = document.getElementById('background');
+    backgroundElement.style.backgroundColor = config.backgroundColor;
+
+    try {
+        const images = await loadImagesFromDB();
+        if (images.length > 0) {
+            const randomIndex = Math.floor(Math.random() * images.length);
+            const imageUrl = URL.createObjectURL(images[randomIndex]);
+            backgroundElement.style.backgroundImage = `url(${imageUrl})`;
+        } else {
+            backgroundElement.style.backgroundImage = 'none';
+        }
+    } catch (error) {
+        console.error("배경 이미지 로딩 실패:", error);
+        backgroundElement.style.backgroundImage = 'none';
+    }
+}
+
 function initializeAutohide() {
     if (config.autohide) {
         let hideTimeout;
@@ -139,34 +199,6 @@ function initializeAutohide() {
     }
 }
 
-// ===================================================================================
-// 배경 설정 적용
-// ===================================================================================
-async function applyBackground() {
-    const backgroundElement = document.getElementById('background');
-    backgroundElement.style.backgroundColor = config.backgroundColor;
-
-    try {
-        const images = await loadImagesFromDB();
-        if (images.length > 0) {
-            const randomIndex = Math.floor(Math.random() * images.length);
-            const imageUrl = URL.createObjectURL(images[randomIndex]);
-            backgroundElement.style.backgroundImage = `url(${imageUrl})`;
-
-            // createObjectURL로 생성된 URL은 메모리 누수 방지를 위해 해제해주는 것이 좋으나,
-            // 이 앱의 경우 페이지를 떠날 때 자동으로 해제되므로 추가 코드는 생략합니다.
-        } else {
-            backgroundElement.style.backgroundImage = 'none';
-        }
-    } catch (error) {
-        console.error("배경 이미지 로딩 실패:", error);
-        backgroundElement.style.backgroundImage = 'none';
-    }
-}
-
-// ===================================================================================
-// 배경 변경 다이얼로그
-// ===================================================================================
 function openBackgroundDialog() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -176,22 +208,30 @@ function openBackgroundDialog() {
     input.onchange = async e => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
-
         try {
-            await saveImageToDB(files); // 파일을 Blob 형태로 DB에 저장
-            await applyBackground(); // DB에서 다시 불러와 배경 즉시 적용
+            await saveImageToDB(files);
+            await applyBackground();
         } catch (error) {
             console.error("이미지 저장 실패:", error);
             alert("이미지 저장에 실패했습니다. 파일이 너무 크거나 브라우저에 문제가 있을 수 있습니다.");
         }
     };
-
     input.click();
 }
 
-// ===================================================================================
-// 시계 기능
-// ===================================================================================
+async function resetBackground() {
+    if (confirm("정말로 모든 배경 이미지를 삭제하고 초기화하시겠습니까?")) {
+        try {
+            await clearImagesFromDB();
+            await applyBackground();
+            alert("배경이 초기화되었습니다.");
+        } catch (error) {
+            console.error("배경 초기화 실패:", error);
+            alert("배경 초기화에 실패했습니다.");
+        }
+    }
+}
+
 function initializeClock() {
     function updateClock() {
         const now = new Date();

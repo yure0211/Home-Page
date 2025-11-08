@@ -32,13 +32,16 @@ body, html {
 
 #item-box {
     background-color: #0003;
-    backdrop-filter: blur(2px);
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     opacity: 1;
     transition: opacity 0.5s ease-in-out;
+}
+
+.blur-effect {
+    backdrop-filter: blur(2px);
 }
 
 #item {
