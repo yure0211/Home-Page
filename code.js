@@ -6,6 +6,7 @@ let config = {
     hideDelay: 3000,
     backgroundColor: 'rgba(0, 0, 0)',
     blur: true,
+    tip: true
 };
 
 // ===================================================================================
@@ -130,6 +131,35 @@ async function applyAllSettings() {
     const blurToggle = document.getElementById('blurToggle');
     if(blurToggle) {
         blurToggle.checked = config.blur;
+    }
+
+    const tip = document.getElementById('tip');
+    if (tip) {
+        tip.style.display = config.tip ? 'block' : 'none';
+        //브라우저 이용 관련 랜덤 팁 20개 TIP: 내용
+        const tips = [
+            "TIP: 즐겨찾기 단축키는 Ctrl + D 입니다.",
+            "TIP: 새 탭을 열려면 Ctrl + T 를 누르세요.",
+            "TIP: 이전 페이지로 돌아가려면 Alt + 왼쪽 화살표 키를 누르세요.",
+            "TIP: 다음 페이지로 이동하려면 Alt + 오른쪽 화살표 키를 누르세요.",
+            "TIP: 페이지 내에서 검색하려면 Ctrl + F 를 누르세요.",
+            "TIP: 전체 화면 모드로 전환하려면 F11 키를 누르세요.",
+            "TIP: 탭 간 전환은 Ctrl + Tab 또는 Ctrl + Shift + Tab 으로 가능합니다.",
+            "TIP: 다운로드한 파일은 보통 '다운로드' 폴더에 저장됩니다.",
+            "TIP: 브라우저 설정에서 개인정보 보호 옵션을 확인하세요.",
+            "TIP: 브라우저 확장 프로그램을 사용하여 기능을 확장할 수 있습니다.",
+            "TIP: 시크릿 모드로 탐색하려면 Ctrl + Shift + N 을 누르세요.",
+            "TIP: 페이지를 새로 고치려면 F5 키를 누르세요.",
+            "TIP: 브라우저 히스토리를 보려면 Ctrl + H 를 누르세요.",
+            "TIP: 열려 있는 모든 탭을 닫으려면 Ctrl + W 를 누르세요.",
+            "TIP: 북마크 바를 표시하거나 숨기려면 Ctrl + Shift + B 를 누르세요.",
+            "TIP: 브라우저에서 비밀번호를 저장하도록 설정할 수 있습니다.",
+            "TIP: 팝업 차단 설정을 확인하여 원치 않는 팝업을 방지하세요.",
+            "TIP: 브라우저에서 자동 완성 기능을 사용하여 양식을 빠르게 작성하세요.",
+            "TIP: 브라우저의 개발자 도구를 열려면 F12 키를 누르세요.",
+            "TIP: 페이지의 전체 내용을 캡처하려면 스크린샷 도구를 사용하세요."
+        ];
+        tip.textContent = tips[Math.floor(Math.random() * tips.length)];
     }
 }
 
