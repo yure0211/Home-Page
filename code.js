@@ -182,6 +182,20 @@ function initializeEventListeners() {
             applyBlurEffect();
         });
     }
+
+    document.addEventListener('keydown', (event) => {
+        const searchInput = document.getElementById('search-input');
+
+        if (document.activeElement === searchInput || event.ctrlKey || event.altKey || event.metaKey) {
+            return;
+        }
+
+        if (event.key.length === 1) {
+            const itemBox = document.getElementById('item-box');
+            itemBox.style.opacity = '1';
+            searchInput.focus();
+        }
+    });
 }
 
 // ===================================================================================
@@ -219,15 +233,22 @@ function initializeAutohide() {
     if (config.autohide) {
         let hideTimeout;
         const itemBox = document.getElementById('item-box');
+        const searchInput = document.getElementById('search-input');
+
         document.addEventListener('mousemove', () => {
             clearTimeout(hideTimeout);
             itemBox.style.opacity = '1';
+
             hideTimeout = setTimeout(() => {
-                itemBox.style.opacity = '0';
+                const activeElement = document.activeElement;
+                if (activeElement !== searchInput) {
+                    itemBox.style.opacity = '0';
+                }
             }, config.hideDelay);
         });
     }
 }
+
 
 function openBackgroundDialog() {
     const input = document.createElement('input');
