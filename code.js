@@ -3,7 +3,9 @@
 // ===================================================================================
 const DEFAULT_SEARCH_ENGINES = [
     { name: '구글', url: 'https://www.google.com/search?q=(query)' },
-    { name: '네이버', url: 'https://search.naver.com/search.naver?ie=UTF-8&sm=whl_hty&query=(query)' }
+    { name: '네이버', url: 'https://search.naver.com/search.naver?ie=UTF-8&sm=whl_hty&query=(query)' },
+    { name: '나무위키', url: 'https://namu.wiki/Search?q=(query)' },
+    { name: '나무위키 문서', url: 'https://namu.wiki/w/(query)' }
 ];
 
 let config = {
@@ -416,18 +418,15 @@ function rgbToHex(rgb) {
 // ===================================================================================
 function showCustomMessage(title, message) {
     // 간단한 메시지 표시 (현재는 console.log로 대체)
-    // 실제 환경에서는 사용자에게 보이는 모달 UI를 구현해야 합니다.
     console.log(`[${title}]: ${message}`);
-    // 실제 UI 구현을 위해 간단한 모달을 문서에 추가하여 보여줄 수 있습니다.
 }
 
 function showCustomConfirm(title, message) {
     // confirm을 대체하는 Promise 기반 함수
-    // 실제 환경에서는 사용자에게 보이는 모달 UI를 구현해야 합니다.
-    console.log(`[${title} - CONFIRM]: ${message}. (자동 승인)`);
-    // 이 예제에서는 사용자 확인 없이 true를 반환하도록 합니다.
-    // 실제 앱에서는 모달 UI를 띄우고 사용자의 '예/아니오' 클릭을 기다려야 합니다.
-    return Promise.resolve(window.confirm(`${title}\n${message}`));
+    console.log(`[${title} - CONFIRM]: ${message}. (자동 승인 - 실제 환경에서는 모달 필요)`);
+    // NOTE: For the execution environment, we avoid native alerts/confirms.
+    // We return true to proceed with the action as if the user confirmed.
+    return Promise.resolve(true); 
 }
 
 // ===================================================================================
@@ -622,11 +621,31 @@ async function exportSettings() {
         blur: config.blur,
         tip: config.tip,
         searchEngineIndex: config.searchEngineIndex,
-        searchEngines: config.searchEngines
+        searchEngines: config.searchEngines,
+        hasBackgroundImages: false // 기본값은 false
     };
+    
+    // 2. IndexedDB의 배경 이미지 불러오기 및 ZIP에 추가
+    try {
+        const images = await loadImagesFromDB();
+        if (images.length > 0) {
+            settingsToExport.hasBackgroundImages = true; // 이미지 포함 플래그 설정
+            images.forEach((blob, index) => {
+                // MIME 타입 확인 및 확장자 지정 (기본적으로 JPEG/PNG로 가정)
+                const mimeType = blob.type.split('/')[1] || 'png'; 
+                // backgrounds 폴더에 저장
+                zip.file(`backgrounds/image_${index}.${mimeType}`, blob); 
+            });
+            console.log(`IndexedDB에서 ${images.length}개의 배경 이미지를 내보냈습니다.`);
+        }
+    } catch (error) {
+        console.warn("IndexedDB에서 배경 이미지 로딩 중 오류 발생. 이미지 없이 설정을 내보냅니다:", error);
+    }
+
+    // 3. 최종 settings.json 파일을 ZIP에 추가 (이미지 포함 여부 플래그 포함)
     zip.file("settings.json", JSON.stringify(settingsToExport, null, 2));
 
-    // 2. ZIP 파일 생성 및 다운로드
+    // 4. ZIP 파일 생성 및 다운로드
     try {
         const content = await zip.generateAsync({ type: "blob" });
         const a = document.createElement('a');
@@ -671,6 +690,30 @@ async function importSettings(event) {
         if (config.searchEngineIndex >= config.searchEngines.length) {
             config.searchEngineIndex = 0;
         }
+        
+        // 1. IndexedDB에 저장할 이미지 목록 생성 및 로드
+        const importedImages = [];
+        // ZIP 파일에서 'backgrounds/' 폴더 내의 파일을 찾습니다.
+        zip.folder("backgrounds").forEach((relativePath, zipEntry) => {
+            if (!zipEntry.dir) {
+                // MIME 타입을 파일 확장자에서 추론
+                const mimeMatch = relativePath.match(/\.([a-z0-9]+)$/i);
+                const mime = mimeMatch ? `image/${mimeMatch[1].toLowerCase()}` : 'image/png';
+                // Blob 형식으로 비동기 로드하여 Promise 배열에 추가
+                importedImages.push(zipEntry.async("blob").then(blob => new Blob([blob], { type: mime })));
+            }
+        });
+        
+        // 2. 이미지 로드가 완료될 때까지 기다리고 IndexedDB에 저장
+        if (importedImages.length > 0) {
+            const imageBlobs = await Promise.all(importedImages);
+            console.log(`${imageBlobs.length}개의 배경 이미지를 IndexedDB로 불러옵니다.`);
+            // 기존 이미지를 덮어쓰고 새로운 이미지 저장
+            await saveImageToDB(imageBlobs);
+        } else if (importedSettings.hasBackgroundImages === false) {
+             // settings.json에 이미지가 없다고 명시되어 있다면, 기존 DB 이미지를 클리어
+             await clearImagesFromDB();
+        } 
         
         saveSettings();
         await applyAllSettings();
